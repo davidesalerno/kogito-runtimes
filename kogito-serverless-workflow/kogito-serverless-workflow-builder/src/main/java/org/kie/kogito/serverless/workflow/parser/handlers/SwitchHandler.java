@@ -19,12 +19,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import org.jbpm.process.instance.impl.ReturnValueConstraintEvaluator;
 import org.jbpm.ruleflow.core.Metadata;
 import org.jbpm.ruleflow.core.RuleFlowNodeContainerFactory;
 import org.jbpm.ruleflow.core.factory.EndNodeFactory;
 import org.jbpm.ruleflow.core.factory.NodeFactory;
 import org.jbpm.ruleflow.core.factory.SplitFactory;
 import org.kie.kogito.serverless.workflow.parser.ParserContext;
+import org.kie.kogito.serverless.workflow.suppliers.ReturnValueConstraintSupplier;
 import org.kie.kogito.serverless.workflow.utils.ExpressionHandlerUtils;
 
 import io.serverlessworkflow.api.Workflow;
@@ -166,9 +168,10 @@ public class SwitchHandler extends StateHandler<SwitchState> {
     }
 
     private void addConstraint(NodeFactory<?, ?> startNode, long targetId, DataCondition condition) {
-        ((SplitFactory<?>) startNode).constraintBuilder(targetId, concatId(startNode.getNode().getId(), targetId),
-                "DROOLS_DEFAULT", workflow.getExpressionLang(), ExpressionHandlerUtils.replaceExpr(workflow, condition.getCondition())).withDefault(isDefaultCondition(state, condition))
-                .metadata(Metadata.VARIABLE, DEFAULT_WORKFLOW_VAR);
+        ReturnValueConstraintEvaluator evaluator = (ReturnValueConstraintEvaluator) new ReturnValueConstraintSupplier(workflow.getExpressionLang(), concatId(startNode.getNode().getId(), targetId),"DROOLS_DEFAULT" ,  ExpressionHandlerUtils.replaceExpr(workflow, condition.getCondition()), isDefaultCondition(state, condition)).get();
+        evaluator.setMetaData(Metadata.VARIABLE, DEFAULT_WORKFLOW_VAR);
+        ((SplitFactory<?>) startNode).constraint(targetId, evaluator);
+
     }
 
     private static String concatId(long start, long end) {
